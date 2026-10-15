@@ -1,0 +1,274 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account and profile information linked to Firebase Auth UID",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier of the user in Firebase Auth" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "Full name of the user" },
+        "role": { "type": "string", "enum": ["super_admin", "chairperson", "treasurer", "secretary", "member"], "description": "Role in the saving group" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "memberId": { "type": "string", "description": "Associated saving group member record ID" },
+        "createdAt": { "type": "string", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Account update timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Whitelist record granting administrative privileges",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email" },
+        "role": { "type": "string", "enum": ["super_admin", "chairperson", "treasurer"], "description": "Privileged role" },
+        "assignedAt": { "type": "string", "description": "Timestamp when admin access was granted" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Community savings group member roster entry",
+      "type": "object",
+      "properties": {
+        "memberNumber": { "type": "string", "description": "Unique member identifier e.g. HSG-001" },
+        "fullName": { "type": "string", "description": "Full legal name" },
+        "phone": { "type": "string", "description": "Mobile phone number for MoMo and SMS" },
+        "email": { "type": "string", "description": "Email address" },
+        "address": { "type": "string", "description": "Residential district and sector in Rwanda" },
+        "joinDate": { "type": "string", "description": "Date joined the saving group" },
+        "status": { "type": "string", "enum": ["active", "suspended", "inactive"], "description": "Membership status" },
+        "avatarUrl": { "type": "string", "description": "Profile photo URL" },
+        "totalSavings": { "type": "number", "description": "Cumulative verified savings in RWF" },
+        "totalLoans": { "type": "number", "description": "Total principal borrowed to date in RWF" },
+        "outstandingLoanBalance": { "type": "number", "description": "Current unpaid loan balance in RWF" },
+        "sharesCount": { "type": "number", "description": "Number of cooperative shares held" }
+      },
+      "required": ["memberNumber", "fullName", "phone", "joinDate", "status"]
+    },
+    "Contribution": {
+      "title": "Contribution",
+      "description": "Member savings deposit or periodic contribution entry",
+      "type": "object",
+      "properties": {
+        "transactionRef": { "type": "string", "description": "Unique financial reference code" },
+        "memberId": { "type": "string", "description": "Member document ID" },
+        "memberNumber": { "type": "string", "description": "Member number" },
+        "memberName": { "type": "string", "description": "Member full name" },
+        "amount": { "type": "number", "description": "Contribution amount in RWF" },
+        "type": { "type": "string", "enum": ["regular_savings", "emergency_fund", "social_welfare", "share_purchase", "late_fee"], "description": "Category of contribution" },
+        "meetingId": { "type": "string", "description": "Optional associated meeting session ID" },
+        "date": { "type": "string", "description": "Date contribution was paid" },
+        "paymentMethod": { "type": "string", "enum": ["momo", "cash_at_meeting", "bank_transfer"], "description": "Method of payment" },
+        "recordedBy": { "type": "string", "description": "Officer who entered the record" },
+        "receiptNo": { "type": "string", "description": "Official receipt number" },
+        "notes": { "type": "string", "description": "Additional notes" },
+        "status": { "type": "string", "enum": ["verified", "pending", "flagged"], "description": "Verification status" },
+        "createdAt": { "type": "string", "description": "Timestamp created" }
+      },
+      "required": ["transactionRef", "memberId", "memberName", "amount", "type", "date", "status"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Community micro-loan application and disbursement record",
+      "type": "object",
+      "properties": {
+        "loanNumber": { "type": "string", "description": "Unique loan ID e.g. LN-2026-001" },
+        "memberId": { "type": "string", "description": "Borrower member document ID" },
+        "memberName": { "type": "string", "description": "Borrower full name" },
+        "requestedAmount": { "type": "number", "description": "Requested principal amount in RWF" },
+        "approvedAmount": { "type": "number", "description": "Approved principal amount in RWF" },
+        "purpose": { "type": "string", "description": "Business, agriculture, tuition, or emergency reason" },
+        "interestRatePercent": { "type": "number", "description": "Monthly or cycle interest rate (e.g. 5%)" },
+        "durationMonths": { "type": "number", "description": "Loan repayment duration in months" },
+        "guarantorMemberId": { "type": "string", "description": "Endorsing member ID" },
+        "guarantorName": { "type": "string", "description": "Endorsing member name" },
+        "status": { "type": "string", "enum": ["pending", "approved", "disbursed", "rejected", "closed"], "description": "Workflow lifecycle state" },
+        "totalPayable": { "type": "number", "description": "Principal plus calculated interest" },
+        "outstandingBalance": { "type": "number", "description": "Remaining balance to be repaid in RWF" },
+        "disbursementDate": { "type": "string", "description": "Date funds were handed or transferred" },
+        "dueDate": { "type": "string", "description": "Final loan repayment deadline" },
+        "approvedBy": { "type": "string", "description": "Name/role of approving officer" }
+      },
+      "required": ["loanNumber", "memberId", "memberName", "requestedAmount", "purpose", "interestRatePercent", "durationMonths", "status"]
+    },
+    "LoanRepayment": {
+      "title": "LoanRepayment",
+      "description": "Installment payment toward an active loan",
+      "type": "object",
+      "properties": {
+        "repaymentRef": { "type": "string", "description": "Unique repayment transaction reference" },
+        "loanId": { "type": "string", "description": "Associated loan document ID" },
+        "loanNumber": { "type": "string", "description": "Associated loan number" },
+        "memberId": { "type": "string", "description": "Borrower member ID" },
+        "memberName": { "type": "string", "description": "Borrower name" },
+        "amount": { "type": "number", "description": "Repayment amount in RWF" },
+        "principalPortion": { "type": "number", "description": "Amount credited toward principal" },
+        "interestPortion": { "type": "number", "description": "Amount credited toward interest" },
+        "paymentDate": { "type": "string", "description": "Date of repayment" },
+        "receiptNo": { "type": "string", "description": "Payment receipt voucher code" },
+        "recordedBy": { "type": "string", "description": "Officer who accepted payment" },
+        "status": { "type": "string", "enum": ["verified", "pending"], "description": "Audit status" }
+      },
+      "required": ["repaymentRef", "loanId", "memberId", "amount", "paymentDate", "status"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Group operational and administrative expenditure",
+      "type": "object",
+      "properties": {
+        "expenseRef": { "type": "string", "description": "Voucher reference e.g. EXP-001" },
+        "category": { "type": "string", "enum": ["meeting_hall_rental", "stationery_and_supplies", "bank_charges", "social_welfare_grant", "transport_and_logistics", "audit_and_legal", "other"], "description": "Expense category" },
+        "description": { "type": "string", "description": "Purpose and details of expenditure" },
+        "amount": { "type": "number", "description": "Expense amount in RWF" },
+        "receiptUrl": { "type": "string", "description": "Uploaded invoice/receipt URL" },
+        "recordedBy": { "type": "string", "description": "Treasurer/officer who logged expense" },
+        "approvedBy": { "type": "string", "description": "Chairperson who authorized expenditure" },
+        "date": { "type": "string", "description": "Date incurred" },
+        "status": { "type": "string", "enum": ["approved", "pending", "rejected"], "description": "Approval state" }
+      },
+      "required": ["expenseRef", "category", "description", "amount", "date", "status"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Budget category allocation and spending threshold",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string", "description": "Budget category title" },
+        "allocatedAmount": { "type": "number", "description": "Budget ceiling in RWF" },
+        "spentAmount": { "type": "number", "description": "Current utilized amount in RWF" },
+        "fiscalPeriod": { "type": "string", "description": "Fiscal cycle e.g. 2026-Q1 or 2026-Annual" }
+      },
+      "required": ["category", "allocatedAmount", "fiscalPeriod"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "Group cooperative milestones or individual target goals",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Goal headline e.g. Agricultural Land Purchase" },
+        "category": { "type": "string", "enum": ["cooperative_investment", "emergency_pool", "annual_dividend_payout", "equipment_fund", "member_personal"], "description": "Classification" },
+        "targetAmount": { "type": "number", "description": "Target fund in RWF" },
+        "currentAmount": { "type": "number", "description": "Accumulated fund in RWF" },
+        "targetDate": { "type": "string", "description": "Target completion date" },
+        "status": { "type": "string", "enum": ["active", "achieved", "paused"], "description": "Goal status" },
+        "createdBy": { "type": "string", "description": "Creator user ID" }
+      },
+      "required": ["title", "category", "targetAmount", "targetDate", "status"]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Savings group assembly, attendance record, and minutes",
+      "type": "object",
+      "properties": {
+        "meetingNumber": { "type": "string", "description": "Meeting sequential ID e.g. MTG-2026-04" },
+        "title": { "type": "string", "description": "Meeting subject" },
+        "date": { "type": "string", "description": "Meeting date and time" },
+        "location": { "type": "string", "description": "Venue e.g. Gisozi Sector Hall or Kigali Hub" },
+        "agenda": { "type": "string", "description": "Items discussed" },
+        "minutes": { "type": "string", "description": "Official recorded minutes" },
+        "attendanceCount": { "type": "number", "description": "Number of present members" },
+        "recordedBy": { "type": "string", "description": "Secretary who took minutes" }
+      },
+      "required": ["meetingNumber", "title", "date", "location"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Group notices, contribution deadlines, and policy circulars",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Headline" },
+        "content": { "type": "string", "description": "Notice body text" },
+        "priority": { "type": "string", "enum": ["normal", "urgent"], "description": "Urgency level" },
+        "postedBy": { "type": "string", "description": "Author officer name" },
+        "date": { "type": "string", "description": "Publication date" }
+      },
+      "required": ["title", "content", "priority", "date"]
+    },
+    "BankImport": {
+      "title": "BankImport",
+      "description": "Imported bank or MoMo transaction batch for reconciliation",
+      "type": "object",
+      "properties": {
+        "batchRef": { "type": "string", "description": "Batch reference code" },
+        "fileName": { "type": "string", "description": "Original CSV filename" },
+        "importDate": { "type": "string", "description": "Date uploaded" },
+        "uploadedBy": { "type": "string", "description": "Treasurer who imported" },
+        "totalRows": { "type": "number", "description": "Total rows detected" },
+        "reconciledRows": { "type": "number", "description": "Matched and approved transactions" },
+        "status": { "type": "string", "enum": ["reconciled", "pending_review"], "description": "Batch state" }
+      },
+      "required": ["batchRef", "importDate", "status"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable ledger audit trace for financial actions",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "Action performed (e.g. RECORD_CONTRIBUTION, APPROVE_LOAN)" },
+        "performedBy": { "type": "string", "description": "User email or identifier" },
+        "entityType": { "type": "string", "description": "Impacted model" },
+        "entityId": { "type": "string", "description": "Document ID" },
+        "timestamp": { "type": "string", "description": "ISO timestamp" },
+        "details": { "type": "string", "description": "Summary of parameters changed" }
+      },
+      "required": ["action", "performedBy", "entityType", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores user profiles with role-based attributes"
+    },
+    "/admins/{userId}": {
+      "schema": "AdminRecord",
+      "description": "Privileged admin whitelist document for access verification"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Roster of community saving group members"
+    },
+    "/contributions/{contributionId}": {
+      "schema": "Contribution",
+      "description": "Savings deposits, shares, and welfare contributions"
+    },
+    "/loans/{loanId}": {
+      "schema": "Loan",
+      "description": "Borrowing applications, active loans, and terms"
+    },
+    "/loanRepayments/{repaymentId}": {
+      "schema": "LoanRepayment",
+      "description": "Loan installment payments with interest split"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Group operating costs and receipts"
+    },
+    "/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "Spending ceilings by category"
+    },
+    "/savingsGoals/{goalId}": {
+      "schema": "SavingsGoal",
+      "description": "Group and individual financial milestones"
+    },
+    "/meetings/{meetingId}": {
+      "schema": "Meeting",
+      "description": "Assembly schedules, agendas, and minutes"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Official community updates and deadlines"
+    },
+    "/bankImports/{importId}": {
+      "schema": "BankImport",
+      "description": "Reconciliation batches from CSV bank statements"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable ledger transaction logs"
+    }
+  }
+}

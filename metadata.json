@@ -1,0 +1,6 @@
+{
+  "name": "Hindurubuzima Saving Group",
+  "description": "Digital community savings, loans, contributions, and transparent financial management platform for Rwandan savings groups.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

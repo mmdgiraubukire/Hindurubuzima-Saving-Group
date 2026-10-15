@@ -1,0 +1,244 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Bootstrapped Admin Check
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email != null && request.auth.token.email == 'TwagiramunguMichel15@gmail.com')
+      );
+    }
+
+    // Role checks from user profile
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isOfficer() {
+      return isAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserRole() in ['super_admin', 'chairperson', 'treasurer', 'secretary']
+      );
+    }
+
+    function isTreasurer() {
+      return isAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserRole() in ['super_admin', 'chairperson', 'treasurer']
+      );
+    }
+
+    // Validation Helpers
+    function isValidUserProfile(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.role in ['super_admin', 'chairperson', 'treasurer', 'secretary', 'member'];
+    }
+
+    function isValidMember(data) {
+      return data.memberNumber is string && data.memberNumber.size() <= 64 &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 128 &&
+             data.phone is string && data.phone.size() <= 32 &&
+             data.status in ['active', 'suspended', 'inactive'];
+    }
+
+    function isValidContribution(data) {
+      return data.transactionRef is string && data.transactionRef.size() <= 64 &&
+             data.memberId is string && data.memberId.size() <= 128 &&
+             data.amount is number && data.amount > 0 && data.amount <= 50000000 &&
+             data.type in ['regular_savings', 'emergency_fund', 'social_welfare', 'share_purchase', 'late_fee'] &&
+             data.status in ['verified', 'pending', 'flagged'];
+    }
+
+    function isValidLoan(data) {
+      return data.loanNumber is string && data.loanNumber.size() <= 64 &&
+             data.memberId is string && data.memberId.size() <= 128 &&
+             data.requestedAmount is number && data.requestedAmount > 0 && data.requestedAmount <= 25000000 &&
+             data.purpose is string && data.purpose.size() <= 500 &&
+             data.interestRatePercent is number && data.interestRatePercent >= 0 && data.interestRatePercent <= 100 &&
+             data.durationMonths is number && data.durationMonths >= 1 && data.durationMonths <= 60 &&
+             data.status in ['pending', 'approved', 'disbursed', 'rejected', 'closed'];
+    }
+
+    function isValidLoanRepayment(data) {
+      return data.repaymentRef is string && data.repaymentRef.size() <= 64 &&
+             data.loanId is string && data.loanId.size() <= 128 &&
+             data.memberId is string && data.memberId.size() <= 128 &&
+             data.amount is number && data.amount > 0 && data.amount <= 25000000 &&
+             data.status in ['verified', 'pending'];
+    }
+
+    function isValidExpense(data) {
+      return data.expenseRef is string && data.expenseRef.size() <= 64 &&
+             data.category is string && data.category.size() <= 64 &&
+             data.amount is number && data.amount > 0 && data.amount <= 50000000 &&
+             data.status in ['approved', 'pending', 'rejected'];
+    }
+
+    function isValidBudget(data) {
+      return data.category is string && data.category.size() <= 64 &&
+             data.allocatedAmount is number && data.allocatedAmount >= 0;
+    }
+
+    function isValidSavingsGoal(data) {
+      return data.title is string && data.title.size() <= 128 &&
+             data.targetAmount is number && data.targetAmount > 0 &&
+             data.status in ['active', 'achieved', 'paused'];
+    }
+
+    function isValidMeeting(data) {
+      return data.meetingNumber is string && data.meetingNumber.size() <= 64 &&
+             data.title is string && data.title.size() <= 150 &&
+             data.location is string && data.location.size() <= 150;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.title is string && data.title.size() <= 150 &&
+             data.content is string && data.content.size() <= 10000 &&
+             data.priority in ['normal', 'urgent'];
+    }
+
+    function isValidBankImport(data) {
+      return data.batchRef is string && data.batchRef.size() <= 64 &&
+             data.status in ['reconciled', 'pending_review'];
+    }
+
+    function isValidAuditLog(data) {
+      return data.action is string && data.action.size() <= 100 &&
+             data.performedBy is string && data.performedBy.size() <= 150 &&
+             data.entityType is string && data.entityType.size() <= 100;
+    }
+
+    // --- Collections ---
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isOfficer());
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUserProfile(incoming());
+      allow update: if isSignedIn() && isValidUserProfile(incoming()) && (
+        isAdmin() ||
+        (request.auth.uid == userId && incoming().role == existing().role)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ADMINS WHITELIST
+    match /admins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // MEMBERS ROSTER
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow create: if isOfficer() && isValidId(memberId) && isValidMember(incoming());
+      allow update: if isOfficer() && isValidId(memberId) && isValidMember(incoming());
+      allow delete: if isAdmin() && isValidId(memberId);
+    }
+
+    // CONTRIBUTIONS LEDGER
+    match /contributions/{contributionId} {
+      allow read: if isSignedIn();
+      allow create: if isOfficer() && isValidId(contributionId) && isValidContribution(incoming());
+      allow update: if isTreasurer() && isValidId(contributionId) && isValidContribution(incoming());
+      allow delete: if isAdmin() && isValidId(contributionId);
+    }
+
+    // LOANS
+    match /loans/{loanId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(loanId) && isValidLoan(incoming()) && (
+        isOfficer() || (incoming().memberId == request.auth.uid && incoming().status == 'pending')
+      );
+      allow update: if isValidId(loanId) && isValidLoan(incoming()) && (
+        isTreasurer() ||
+        (existing().status != 'closed' && isOfficer())
+      );
+      allow delete: if isAdmin() && isValidId(loanId);
+    }
+
+    // LOAN REPAYMENTS
+    match /loanRepayments/{repaymentId} {
+      allow read: if isSignedIn();
+      allow create: if isTreasurer() && isValidId(repaymentId) && isValidLoanRepayment(incoming());
+      allow update: if isTreasurer() && isValidId(repaymentId) && isValidLoanRepayment(incoming());
+      allow delete: if isAdmin() && isValidId(repaymentId);
+    }
+
+    // EXPENSES
+    match /expenses/{expenseId} {
+      allow read: if isSignedIn();
+      allow create: if isTreasurer() && isValidId(expenseId) && isValidExpense(incoming());
+      allow update: if isTreasurer() && isValidId(expenseId) && isValidExpense(incoming());
+      allow delete: if isAdmin() && isValidId(expenseId);
+    }
+
+    // BUDGETS
+    match /budgets/{budgetId} {
+      allow read: if isSignedIn();
+      allow create, update: if isTreasurer() && isValidId(budgetId) && isValidBudget(incoming());
+      allow delete: if isAdmin() && isValidId(budgetId);
+    }
+
+    // SAVINGS GOALS
+    match /savingsGoals/{goalId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOfficer() && isValidId(goalId) && isValidSavingsGoal(incoming());
+      allow delete: if isAdmin() && isValidId(goalId);
+    }
+
+    // MEETINGS
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOfficer() && isValidId(meetingId) && isValidMeeting(incoming());
+      allow delete: if isAdmin() && isValidId(meetingId);
+    }
+
+    // ANNOUNCEMENTS
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOfficer() && isValidId(announcementId) && isValidAnnouncement(incoming());
+      allow delete: if isAdmin() && isValidId(announcementId);
+    }
+
+    // BANK IMPORTS
+    match /bankImports/{importId} {
+      allow read: if isTreasurer();
+      allow create, update: if isTreasurer() && isValidId(importId) && isValidBankImport(incoming());
+      allow delete: if isAdmin() && isValidId(importId);
+    }
+
+    // AUDIT LOGS
+    match /auditLogs/{logId} {
+      allow read: if isOfficer();
+      allow create: if isSignedIn() && isValidId(logId) && isValidAuditLog(incoming());
+      allow update, delete: if false; // Immutable audit log
+    }
+  }
+}
